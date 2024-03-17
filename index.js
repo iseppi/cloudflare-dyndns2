@@ -28,49 +28,45 @@ async function handleRequest(request) {
     })
   }
 
-  if (url.pathname === '/') {
-    return Response.redirect('https://github.com/jayme-github/cloudflare-dyndns2', 301)
-  }
-
   // In the case of a "Basic" authentication, the exchange
   // MUST happen over an HTTPS (TLS) connection to be secure.
   if ('https:' !== url.protocol || 'https' !== request.headers.get('x-forwarded-proto')) {
     throw new BadRequestException('Please use a HTTPS connection.')
   }
 
-  // The "Authorization" header is sent when authenticated.
-  if (request.headers.has('Authorization')) {
-    // Throws exception when authorization fails.
-    const { user, pass } = basicAuthentication(request)
-    verifyCredentials(user, pass)
-  } else {
-    // Not authenticated.
-    if (jsonResponse) {
-      return new Response(JSON.stringify({ success: false, errors: ['Authentication required',], messages: [] }), {
-        status: 401,
-        headers: {
-          // Prompts the user for credentials.
-          'WWW-Authenticate': 'Basic realm="cloudflare-dyndns2", charset="UTF-8"',
-          'Content-Type': 'application/json;charset=UTF-8',
-          'Cache-Control': 'no-store',
-        }
-      })
-    } else {
-      return new Response('badauth', {
-        status: 401,
-        headers: {
-          // Prompts the user for credentials.
-          'WWW-Authenticate': 'Basic realm="cloudflare-dyndns2", charset="UTF-8"',
-          'Content-Type': 'text/plain;charset=UTF-8',
-          'Cache-Control': 'no-store',
-        }
-      })
-    }
-  }
   switch (url.pathname) {
     case '/nic/update':
     // This is the legacy API, requires myip and hostname as well.
     case '/v3/update':
+      // The "Authorization" header is sent when authenticated.
+      if (request.headers.has('Authorization')) {
+        // Throws exception when authorization fails.
+        const { user, pass } = basicAuthentication(request)
+        verifyCredentials(user, pass)
+      } else {
+        // Not authenticated.
+        if (jsonResponse) {
+          return new Response(JSON.stringify({ success: false, errors: ['Authentication required',], messages: [] }), {
+            status: 401,
+            headers: {
+              // Prompts the user for credentials.
+              'WWW-Authenticate': 'Basic realm="cloudflare-dyndns2", charset="UTF-8"',
+              'Content-Type': 'application/json;charset=UTF-8',
+              'Cache-Control': 'no-store',
+            }
+          })
+        } else {
+          return new Response('badauth', {
+            status: 401,
+            headers: {
+              // Prompts the user for credentials.
+              'WWW-Authenticate': 'Basic realm="cloudflare-dyndns2", charset="UTF-8"',
+              'Content-Type': 'text/plain;charset=UTF-8',
+              'Cache-Control': 'no-store',
+            }
+          })
+        }
+      }
       const hostnames = url.searchParams.get('hostname')
       if (hostnames === null) {
         return new Response('notfqdn', {
@@ -81,6 +77,7 @@ async function handleRequest(request) {
           }
         })
       }
+      console.log('Hostnames: ' + hostnames)
       const newIPs = parseNewIPs(url, request.headers)
       console.log('New IPv4: ' + newIPs['A'])
       console.log('New IPv6: ' + newIPs['AAAA'])
@@ -186,9 +183,12 @@ async function handleRequest(request) {
         })
       }
 
+    case '/':
+      return Response.redirect('https://iseppi.org', 302)
+
     default:
       return new Response(JSON.stringify({ success: false, errors: ['No route for that URI',], messages: [] }), {
-        status: 400,
+        status: 404,
         headers: {
           'Content-Type': 'application/json;charset=UTF-8',
           'Cache-Control': 'no-store',
@@ -364,7 +364,16 @@ function parseNewIPs(url, headers) {
  * @throws {UnauthorizedException}
  */
 function verifyCredentials(user, pass) {
-  if (BASIC_USER !== user || BASIC_PASS !== pass) {
+  if ((typeof BASIC_USER !== 'undefined') && (typeof BASIC_PASS !== 'undefined')) {
+    if (BASIC_USER !== user || BASIC_PASS !== pass) {
+      throw new UnauthorizedException('Invalid username/password.')
+    }
+  } else if (typeof BASIC_DICT !== 'undefined') {
+    const users = JSON.parse(BASIC_DICT)
+    if (typeof users !== 'undefined' && typeof users[user] !== 'undefined' && typeof users[user]['password'] !== 'undefined' && users[user]['password'] !== pass) {
+      throw new UnauthorizedException('Invalid username/password.')
+    }
+  } else {
     throw new UnauthorizedException('Invalid username/password.')
   }
 }
