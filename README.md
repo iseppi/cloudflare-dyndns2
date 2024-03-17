@@ -25,7 +25,7 @@ wrangler secret put CF_DNS_API_TOKEN
 
 After that you can publish the code by calling:
 ```bash
-wrangler publish
+wrangler deploy
 ```
 
 You now need to create the A/AAAA records you want to update with your desired settings via the Cloudflare UI (or API). cloudflare-dyndns2 will only update existing records and won't create new ones.
