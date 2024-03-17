@@ -19,8 +19,8 @@ async function handleRequest(request) {
 
   // Only GET requests are supported
   if (request.method !== 'GET') {
-    return new Response('badrequest', {
-      status: 200,
+    return new Response('badagent', {
+      status: 405,
       headers: {
         'Content-Type': 'text/plain;charset=UTF-8',
         'Cache-Control': 'no-store',
@@ -93,7 +93,7 @@ async function handleRequest(request) {
       let txtMessages = []
       for (const hostname of hostnames.split(',')) {
         if (!FQDN_REGEX.test(hostname)) {
-          txtMessages.push('nofqdn')
+          txtMessages.push('notfqdn')
           continue
         }
         const zoneName = zoneFromFQDN(hostname)
